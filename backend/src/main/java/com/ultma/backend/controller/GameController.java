@@ -33,7 +33,16 @@ public class GameController {
     }
 
     @PostMapping("/cast")
-    public SpellResult castMagic(@RequestParam String w1, @RequestParam String w2) {
-        return gameService.castSpell(w1, w2);
+    public SpellResult castMagic(
+            @RequestParam String playerId, 
+            @RequestParam String w1, 
+            @RequestParam String w2) {
+        return gameService.castSpell(playerId, w1, w2);
     }
+
+    @PostMapping("/meditate")
+    public GameMatch meditate(@RequestParam String playerId) {
+        return gameService.meditate(playerId);
+    }
+
 }

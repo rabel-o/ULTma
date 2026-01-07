@@ -78,26 +78,52 @@ public class GameService {
         return map;
     }
 
-    public SpellResult castSpell(String word1Str, String word2Str) {
-        GameMatch match = getGameState();
-        if (match == null) return new SpellResult("Erro", "N/A", 0, "Jogo não iniciado", false);
+// cast a spell and deduct mana from player
+public SpellResult castSpell(String playerId, String word1Str, String word2Str) {
+    GameMatch match = getGameState();
+    if (match == null) return new SpellResult("Error", "N/A", 0, "game not started", false);
 
-        try {
-            // 1. Converte Strings para Enums
-            GameEnums.PowerWord word1 = GameEnums.PowerWord.valueOf(word1Str.toUpperCase());
-            GameEnums.PowerWord word2 = GameEnums.PowerWord.valueOf(word2Str.toUpperCase());
+    // find the player who is casting
+    Player player = match.getPlayers().stream()
+            .filter(p -> p.getId().equals(playerId))
+            .findFirst()
+            .orElse(null);
 
-            // 2. Traduz para o Significado REAL usando o dicionário da partida atual
-            GameEnums.Meaning m1 = match.getWordDictionary().get(word1);
-            GameEnums.Meaning m2 = match.getWordDictionary().get(word2);
-
-            // 3. Verifica a combinação (Ordenamos para AETHER+RUNA ser igual a RUNA+AETHER)
-            return resolveCombination(m1, m2);
-
-        } catch (IllegalArgumentException e) {
-            return new SpellResult("Palavra Inválida", "Erro", 0, "Uma das palavras não existe", false);
-        }
+    if (player == null) {
+        return new SpellResult("Error", "N/A", 0, "player not found", false);
     }
+
+    try {
+        // convert strings to enums
+        GameEnums.PowerWord word1 = GameEnums.PowerWord.valueOf(word1Str.toUpperCase());
+        GameEnums.PowerWord word2 = GameEnums.PowerWord.valueOf(word2Str.toUpperCase());
+
+        // translate words using the match dictionary
+        GameEnums.Meaning m1 = match.getWordDictionary().get(word1);
+        GameEnums.Meaning m2 = match.getWordDictionary().get(word2);
+
+        // calculate the spell result
+        SpellResult result = resolveCombination(m1, m2);
+
+        // check if player has enough mana
+        if (player.getMana() < result.getManaCost()) {
+            return new SpellResult("Fizzle", "Failure", 0, "not enough mana to cast this spell", false);
+        }
+
+        // deduct mana and save game state
+        player.setMana(player.getMana() - result.getManaCost());
+
+        if (result.isSuccess() && !player.getKnownSpells().contains(result.getSpellName())) {
+            player.getKnownSpells().add(result.getSpellName());
+        }
+
+        gameRepository.saveGame(match);
+        return result;
+
+    } catch (IllegalArgumentException e) {
+        return new SpellResult("Invalid Word", "Error", 0, "one of the words does not exist", false);
+    }
+}
 
     private SpellResult resolveCombination(GameEnums.Meaning m1, GameEnums.Meaning m2) {
         // Trick: Sort the names to facilitate the comparison in the switch
@@ -133,5 +159,22 @@ public class GameService {
 
             default: return new SpellResult("Falha Mágica", "Nenhum", 0, "A combinação falhou.", false);
         }
+    }
+
+    // action to recover mana (end of turn mechanic)
+    public GameMatch meditate(String playerId) {
+        GameMatch match = getGameState();
+        Player player = match.getPlayers().stream()
+                .filter(p -> p.getId().equals(playerId))
+                .findFirst()
+                .orElse(null);
+
+        if (player != null) {
+            // recover 2 mana, capping at 5 (initial max) for balance
+            int newMana = Math.min(5, player.getMana() + 2);
+            player.setMana(newMana);
+            gameRepository.saveGame(match);
+        }
+        return match;
     }
 }

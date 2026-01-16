@@ -16,6 +16,9 @@ public class GameMatch {
 
     private Map<GameEnums.PowerWord, GameEnums.Meaning> wordDictionary;
     private Map<GameEnums.PotionColor, GameEnums.PotionEffect> potionDictionary;
+    
+    // Sistema de glifos
+    private List<GameEnums.Glifo> glifosUsadosNoTabuleiro; // Glifos distintos já usados nesta rodada
 
 
     public GameMatch() {
@@ -24,5 +27,6 @@ public class GameMatch {
         this.isArenaPhase = false;
         this.currentTurnPlayerIndex = 0;
         this.arenaRound = 0;
+        this.glifosUsadosNoTabuleiro = new ArrayList<>();
     }
 }

@@ -72,10 +72,37 @@ export const GameService = {
         return response.data;
     },
 
+    // end arena phase and return to exploration
+    endArenaPhase: async (): Promise<GameMatch> => {
+        const response = await api.post<GameMatch>('/end-arena');
+        return response.data;
+    },
+
     // check if positions are adjacent
     areAdjacent: async (pos1: number, pos2: number, totalPlayers: number): Promise<boolean> => {
         const response = await api.get<boolean>('/adjacent', {
             params: { pos1, pos2, totalPlayers }
+        });
+        return response.data;
+    },
+
+    // reset/delete current game
+    resetGame: async (): Promise<void> => {
+        await api.delete('/reset');
+    },
+
+    // use a potion from player's inventory
+    usePotion: async (playerId: string, potionColor: string): Promise<GameMatch> => {
+        const response = await api.post<GameMatch>('/use-potion', null, {
+            params: { playerId, potionColor }
+        });
+        return response.data;
+    },
+
+    // give a specific potion to a player
+    givePotion: async (playerId: string, potionColor: string): Promise<GameMatch> => {
+        const response = await api.post<GameMatch>('/give-potion', null, {
+            params: { playerId, potionColor }
         });
         return response.data;
     },

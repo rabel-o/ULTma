@@ -34,4 +34,11 @@ public class GameRepository {
             return null;
         }
     }
+
+    public void resetGame() {
+        File file = new File(FILE_PATH);
+        if (file.exists()) {
+            file.delete();
+        }
+    }
 }

@@ -71,4 +71,40 @@ public class GameController {
         return gameService.endArenaTurn(playerId);
     }
 
+    @DeleteMapping("/reset")
+    public void resetGame() {
+        gameService.resetGame();
+    }
+
+    @PostMapping("/use-potion")
+    public GameMatch usePotion(
+            @RequestParam String playerId,
+            @RequestParam String potionColor) {
+        return gameService.usePotion(playerId, potionColor);
+    }
+
+    @PostMapping("/give-potion")
+    public GameMatch givePotion(
+            @RequestParam String playerId,
+            @RequestParam String potionColor) {
+        return gameService.givePotion(playerId, potionColor);
+    }
+
+    @PostMapping("/distribute-glyphs")
+    public GameMatch distributeGlyphs() {
+        return gameService.distributeGlyphs();
+    }
+
+    @PostMapping("/use-glyph")
+    public GameMatch useGlyph(
+            @RequestParam String playerId,
+            @RequestParam String glifo) {
+        return gameService.useGlyph(playerId, glifo);
+    }
+
+    @PostMapping("/end-arena")
+    public GameMatch endArenaPhase() {
+        return gameService.endArenaPhase();
+    }
+
 }

@@ -17,4 +17,8 @@ public class GameEnums {
     public enum PotionEffect {
         CURA, MANA, ESCUDO, DEBILITANTE, CORRUPCAO, ANTI_MAGIA
     }
+
+    public enum Glifo {
+        GLIFO_1, GLIFO_2, GLIFO_3, GLIFO_4
+    }
 }

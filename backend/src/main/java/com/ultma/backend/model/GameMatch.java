@@ -11,6 +11,8 @@ public class GameMatch {
     private String matchId;
     private List<Player> players;
     private boolean isArenaPhase;
+    private Integer currentTurnPlayerIndex;
+    private Integer arenaRound;
 
     private Map<GameEnums.PowerWord, GameEnums.Meaning> wordDictionary;
     private Map<GameEnums.PotionColor, GameEnums.PotionEffect> potionDictionary;
@@ -20,5 +22,7 @@ public class GameMatch {
         this.matchId = UUID.randomUUID().toString();
         this.players = new ArrayList<>();
         this.isArenaPhase = false;
+        this.currentTurnPlayerIndex = 0;
+        this.arenaRound = 0;
     }
 }

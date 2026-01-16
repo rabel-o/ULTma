@@ -5,6 +5,7 @@ import com.ultma.backend.service.GameService;
 import org.springframework.web.bind.annotation.*;
 
 import com.ultma.backend.model.SpellResult;
+import com.ultma.backend.model.DuelResult;
 
 @RestController
 @RequestMapping("/api/game")
@@ -43,6 +44,31 @@ public class GameController {
     @PostMapping("/meditate")
     public GameMatch meditate(@RequestParam String playerId) {
         return gameService.meditate(playerId);
+    }
+
+    @PostMapping("/attack")
+    public DuelResult attackPlayer(
+            @RequestParam String attackerId,
+            @RequestParam String targetId,
+            @RequestParam String spellName) {
+        return gameService.attackPlayer(attackerId, targetId, spellName);
+    }
+
+    @PostMapping("/activate-defense")
+    public SpellResult activateDefense(
+            @RequestParam String playerId,
+            @RequestParam String spellName) {
+        return gameService.activateDefense(playerId, spellName);
+    }
+
+    @PostMapping("/start-arena")
+    public GameMatch startArenaPhase() {
+        return gameService.startArenaPhase();
+    }
+
+    @PostMapping("/end-turn")
+    public GameMatch endArenaTurn(@RequestParam String playerId) {
+        return gameService.endArenaTurn(playerId);
     }
 
 }

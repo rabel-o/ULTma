@@ -1,9 +1,10 @@
 // frontend/src/api.ts
 import axios from 'axios';
-import { GameMatch, SpellResult } from './types';
+import { GameMatch, SpellResult, DuelResult } from './types';
 
+const apiBaseURL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/game';
 const api = axios.create({
-    baseURL: 'http://localhost:8080/api/game',
+    baseURL: apiBaseURL,
 });
 
 export const GameService = {
@@ -37,6 +38,44 @@ export const GameService = {
     meditate: async (playerId: string): Promise<GameMatch> => {
         const response = await api.post<GameMatch>('/meditate', null, {
             params: { playerId }
+        });
+        return response.data;
+    },
+
+    // attack another player
+    attackPlayer: async (attackerId: string, targetId: string, spellName: string): Promise<DuelResult> => {
+        const response = await api.post<DuelResult>('/attack', null, {
+            params: { attackerId, targetId, spellName }
+        });
+        return response.data;
+    },
+
+    // activate a defense spell
+    activateDefense: async (playerId: string, spellName: string): Promise<SpellResult> => {
+        const response = await api.post<SpellResult>('/activate-defense', null, {
+            params: { playerId, spellName }
+        });
+        return response.data;
+    },
+
+    // start arena phase
+    startArenaPhase: async (): Promise<GameMatch> => {
+        const response = await api.post<GameMatch>('/start-arena');
+        return response.data;
+    },
+
+    // end turn in arena
+    endArenaTurn: async (playerId: string): Promise<GameMatch> => {
+        const response = await api.post<GameMatch>('/end-turn', null, {
+            params: { playerId }
+        });
+        return response.data;
+    },
+
+    // check if positions are adjacent
+    areAdjacent: async (pos1: number, pos2: number, totalPlayers: number): Promise<boolean> => {
+        const response = await api.get<boolean>('/adjacent', {
+            params: { pos1, pos2, totalPlayers }
         });
         return response.data;
     },

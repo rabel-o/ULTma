@@ -4,10 +4,12 @@ import com.ultma.backend.model.GameEnums;
 import com.ultma.backend.model.GameMatch;
 import com.ultma.backend.model.Player;
 import com.ultma.backend.model.SpellResult;
+import com.ultma.backend.model.DuelResult;
 import com.ultma.backend.repository.GameRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class GameService {
@@ -164,6 +166,8 @@ public SpellResult castSpell(String playerId, String word1Str, String word2Str) 
     // action to recover mana (end of turn mechanic)
     public GameMatch meditate(String playerId) {
         GameMatch match = getGameState();
+        if (match == null) return null;
+        
         Player player = match.getPlayers().stream()
                 .filter(p -> p.getId().equals(playerId))
                 .findFirst()
@@ -175,6 +179,206 @@ public SpellResult castSpell(String playerId, String word1Str, String word2Str) 
             player.setMana(newMana);
             gameRepository.saveGame(match);
         }
+        return match;
+    }
+
+    // Attack another player with a spell
+    public DuelResult attackPlayer(String attackerId, String targetId, String spellName) {
+        GameMatch match = getGameState();
+        if (match == null) {
+            return new DuelResult(false, attackerId, targetId, spellName, 0, 0, 0, 0, 0, false, null);
+        }
+
+        Player attacker = match.getPlayers().stream()
+                .filter(p -> p.getId().equals(attackerId))
+                .findFirst()
+                .orElse(null);
+
+        Player target = match.getPlayers().stream()
+                .filter(p -> p.getId().equals(targetId))
+                .findFirst()
+                .orElse(null);
+
+        if (attacker == null || target == null || attacker.equals(target)) {
+            return new DuelResult(false, attackerId, targetId, spellName, 0, 0, 0, 0, 0, false, null);
+        }
+
+        // Check if attacker knows the spell
+        if (!attacker.getKnownSpells().contains(spellName)) {
+            return new DuelResult(false, attackerId, targetId, spellName, 0, 0, 0, 0, 0, false, "Você não conhece esta magia");
+        }
+
+        // Get spell info to check if it's an attack spell
+        String spellType = getSpellType(spellName);
+        if (!"Ataque".equals(spellType)) {
+            return new DuelResult(false, attackerId, targetId, spellName, 0, 0, 0, 0, 0, false, "Esta magia não é de ataque");
+        }
+
+        // Get spell cost - attack spells cost 1-2 mana
+        int spellCost = getSpellCost(spellName);
+        if (attacker.getMana() < spellCost) {
+            return new DuelResult(false, attackerId, targetId, spellName, 0, 0, 0, 0, 0, false, "Mana insuficiente para esta magia");
+        }
+
+        // Deduct mana from attacker
+        attacker.setMana(attacker.getMana() - spellCost);
+
+        // Check for blocking defenses (simplified - no active defenses for now)
+        String blockingSpell = null;
+        boolean wasBlocked = false;
+
+        int shieldBefore = target.getMagicShield();
+        int lifeBefore = target.getLifeEnergy();
+        int damage = 1; // Base damage is 1
+
+        // Apply damage
+        if (!wasBlocked) {
+            if (target.getMagicShield() > 0) {
+                target.setMagicShield(Math.max(0, target.getMagicShield() - damage));
+            } else {
+                target.setLifeEnergy(Math.max(0, target.getLifeEnergy() - damage));
+            }
+        }
+
+        // Check for elimination
+        if (target.getLifeEnergy() <= 0) {
+            target.setEliminated(true);
+        }
+
+        int shieldAfter = target.getMagicShield();
+        int lifeAfter = target.getLifeEnergy();
+
+        gameRepository.saveGame(match);
+
+        return new DuelResult(true, attackerId, targetId, spellName, wasBlocked ? 0 : damage,
+                shieldBefore, shieldAfter, lifeBefore, lifeAfter, wasBlocked, blockingSpell);
+    }
+
+    private String getSpellType(String spellName) {
+        switch (spellName) {
+            case "Bola de Fogo":
+            case "Lança de Gelo":
+            case "Vento Cortante":
+            case "Fúria da Terra":
+            case "Disparo Arcano":
+            case "Maldição do Vazio":
+                return "Ataque";
+            case "Barreira de Fogo":
+            case "Muro de Água":
+            case "Armadura de Pedra":
+            case "Levitação":
+            case "Proteção Arcana":
+            case "Escudo de Vácuo":
+                return "Defesa";
+            default:
+                return "Utilidade";
+        }
+    }
+
+    private int getSpellCost(String spellName) {
+        switch (spellName) {
+            case "Disparo Arcano":
+                return 1;
+            case "Bola de Fogo":
+            case "Lança de Gelo":
+            case "Vento Cortante":
+            case "Fúria da Terra":
+            case "Maldição do Vazio":
+                return 2;
+            default:
+                return 1;
+        }
+    }
+
+    // Activate a defense spell for a player
+    public SpellResult activateDefense(String playerId, String spellName) {
+        GameMatch match = getGameState();
+        if (match == null) return new SpellResult("Error", "N/A", 0, "game not started", false);
+
+        Player player = match.getPlayers().stream()
+                .filter(p -> p.getId().equals(playerId))
+                .findFirst()
+                .orElse(null);
+
+        if (player == null) {
+            return new SpellResult("Error", "N/A", 0, "player not found", false);
+        }
+
+        // Check if player knows the spell
+        if (!player.getKnownSpells().contains(spellName)) {
+            return new SpellResult("Error", "N/A", 0, "você não conhece esta magia", false);
+        }
+
+        // Check if it's a defense spell
+        String spellType = getSpellType(spellName);
+        if (!"Defesa".equals(spellType)) {
+            return new SpellResult("Error", "N/A", 0, "esta magia não é de defesa", false);
+        }
+
+        // Get spell cost (defense spells cost 1, except Escudo de Vácuo which costs 3)
+        int cost = "Escudo de Vácuo".equals(spellName) ? 3 : 1;
+
+        // Check if player has enough mana
+        if (player.getMana() < cost) {
+            return new SpellResult("Fizzle", "Failure", 0, "mana insuficiente para ativar esta defesa", false);
+        }
+
+        // Deduct mana
+        player.setMana(player.getMana() - cost);
+
+        // Apply Escudo de Vácuo effect (adds 1 temporary shield)
+        if ("Escudo de Vácuo".equals(spellName)) {
+            player.setMagicShield(player.getMagicShield() + 1);
+        }
+
+        gameRepository.saveGame(match);
+
+        return new SpellResult(spellName, "Defesa", cost, "Defesa ativada!", true);
+    }
+
+    // Start arena phase
+    public GameMatch startArenaPhase() {
+        GameMatch match = getGameState();
+        if (match == null) return null;
+
+        List<Player> activePlayers = match.getPlayers().stream()
+                .filter(p -> !p.isEliminated())
+                .collect(Collectors.toList());
+
+        if (activePlayers.size() < 2) {
+            return match; // Need at least 2 players
+        }
+
+        match.setArenaPhase(true);
+        if (match.getArenaRound() == null) {
+            match.setArenaRound(0);
+        }
+        match.setArenaRound(match.getArenaRound() + 1);
+        match.setCurrentTurnPlayerIndex(0);
+
+        gameRepository.saveGame(match);
+        return match;
+    }
+
+    // End turn in arena
+    public GameMatch endArenaTurn(String playerId) {
+        GameMatch match = getGameState();
+        if (match == null || !match.isArenaPhase()) return match;
+
+        List<Player> activePlayers = match.getPlayers().stream()
+                .filter(p -> !p.isEliminated())
+                .collect(Collectors.toList());
+
+        int currentIndex = match.getCurrentTurnPlayerIndex() != null ? match.getCurrentTurnPlayerIndex() : 0;
+        if (currentIndex < activePlayers.size() - 1) {
+            match.setCurrentTurnPlayerIndex(currentIndex + 1);
+        } else {
+            // Round complete, start new round
+            match.setArenaRound(match.getArenaRound() + 1);
+            match.setCurrentTurnPlayerIndex(0);
+        }
+
+        gameRepository.saveGame(match);
         return match;
     }
 }
